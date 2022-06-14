@@ -116,14 +116,13 @@ const getAllProperties = (options, limit = 10) => {
   SELECT properties.*, avg(property_reviews.rating) as average_rating
   FROM properties
   JOIN property_reviews ON properties.id = property_id
-  WHERE TRUE
   `;
 
   // check if a city has been passed in. add city to params arr and create WHERE clause for it
   // * iLIKE used so query is not case sensitive *
   if (options.city) {
     queryParams.push(`%${options.city}%`);
-    queryString += `AND city iLIKE $${queryParams.length} `;
+    queryString += `WHERE city iLIKE $${queryParams.length} `;
   }
 
   // * push queries below without ${} (template literals) because != strings *
@@ -143,15 +142,16 @@ const getAllProperties = (options, limit = 10) => {
     queryString += `AND cost_per_night <= $${queryParams.length} `;
   }
 
+  queryString += `GROUP BY properties.id `;
+
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
-    queryString += `AND property_reviews.rating >= $${queryParams.length} `;
+    queryString += `HAVING avg(property_reviews.rating) >= $${queryParams.length} `;
   }
 
   // add rest of query info after WHERE clause
   queryParams.push(limit);
   queryString += `
-  GROUP BY properties.id
   ORDER BY cost_per_night
   LIMIT $${queryParams.length};
   `;
